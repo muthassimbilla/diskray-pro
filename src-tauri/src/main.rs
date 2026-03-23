@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    pc_manager_lib::run()
+    diskray_pro_lib::run()
 }
