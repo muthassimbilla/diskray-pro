@@ -3,9 +3,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
-  workflow_dispatch:
 
 jobs:
   release:
@@ -14,45 +11,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-20.04, windows-latest]
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.platform }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-20.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf libjavascriptcoregtk-4.0-dev wget
-          # For RPM support on Ubuntu
-          sudo apt-get install -y rpm
-
-      - name: Rust setup
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-
-      - name: Node.js setup
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
-      - name: Install frontend dependencies
-        run: pnpm install # Using pnpm as it is in the project
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Build Tauri App
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install system dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libnm-dev libsoup2.4-dev curl wget libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # The tag name to use for the release
-          releaseName: 'DiskRay Pro v__VERSION__'
-          releaseBody: 'Automated release for DiskRay Pro.'
+          tagName: app-v__VERSION__
+          releaseName: "DiskRay Pro v__VERSION__"
+          releaseBody: "Automated release from GitHub Actions"
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.platform == 'ubuntu-20.04' && '--target x86_64-unknown-linux-gnu' || '' }}
